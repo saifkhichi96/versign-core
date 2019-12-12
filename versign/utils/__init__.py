@@ -2,12 +2,11 @@ import cv2
 import numpy as np
 from PIL import Image
 from scipy import ndimage
-from scipy.misc import imresize
 from skimage.filters import threshold_local
 
 
-def resize(image, canvas_size, interpolation="bilinear"):
-    # type: (np.array, tuple, str) -> np.array
+def resize(image, canvas_size):
+    # type: (np.array, tuple) -> np.array
     """
     Resize an image to specified size while preserving the aspect ratio.
 
@@ -16,18 +15,23 @@ def resize(image, canvas_size, interpolation="bilinear"):
 
     :param image: the image to be resized
     :param canvas_size: maximum size of the output image in pixels
-    :param interpolation: type of interpolation to use (default 'bilinear')
     """
     ih, iw = image.shape
     aspect = iw / ih
 
     out_w, out_h = canvas_size
-    if ih >= iw:
-        out_w = int(out_h * aspect)
-    else:
+    if out_w < out_h:
         out_h = int(out_w / aspect)
+        if out_h > canvas_size[1]:
+            out_h = canvas_size[1]
+            out_w = int(out_h * aspect)
+    else:
+        out_w = int(out_h * aspect)
+        if out_w > canvas_size[0]:
+            out_w = canvas_size[0]
+            out_h = int(out_w / aspect)
 
-    return imresize(image, (out_h, out_w), interp=interpolation)
+    return np.array(Image.fromarray(image).resize((out_w, out_h), Image.BICUBIC))
 
 
 def center_inside(im, canvas_size):
@@ -46,8 +50,8 @@ def center_inside(im, canvas_size):
     im = resize(im, canvas_size)
     ih, iw = im.shape
 
-    pad_x = (out_w - iw) / 2
-    pad_y = (out_h - ih) / 2
+    pad_x = int((out_w - iw) / 2)
+    pad_y = int((out_h - ih) / 2)
 
     canvas[pad_y:pad_y + ih, pad_x:pad_x + iw] = im
     return canvas
@@ -74,9 +78,10 @@ def threshold_and_crop(im):
 
 
 def preprocess_signature(im, canvas_size):
-    im = threshold_and_crop(im)
+    im = np.array(im)
+    im = threshold_and_crop(np.array(im))
     im = center_inside(im, canvas_size)
-    return im
+    return Image.fromarray(im)
 
 
 def preprocess_cheque(infile, outfile):

@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-from sklearn.externals import joblib
 
-from preprocess import gridlines
+from . import gridlines
 
 
-def find_in_check(im, model):
+def find_in_check(im, clf):
     # crop bottom right of image where signature lies, according to our prior knowledge
     print('\tlooking at bottom-right of the check...')
     h, w = im.shape
@@ -23,10 +22,6 @@ def find_in_check(im, model):
     print('\tanalysing connected components to find signature...')
     connectivity = 8  # 4-way / 8-way connectivity
     count, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh, connectivity, cv2.CV_32S)
-
-    # Load the trained model
-    print('\tloading our decision model...')
-    clf = joblib.load(model)
 
     # Label extracted components
     print('\tthinking...')
@@ -113,7 +108,7 @@ def find_in_grid(im_grid):
     return boxes
 
 
-def extract_from_check(im, model, canvas_size):
+def extract_from_check(im, model):
     print("locating signature in check...")
     x, y, dx, dy = find_in_check(im, model)
 

@@ -123,7 +123,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# macOS files
-.DS_STORE
+# Other files
+.idea/
+.vs/
 ._*
 Icon?
+.DS_STORE
+models/
