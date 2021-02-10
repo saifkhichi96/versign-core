@@ -129,5 +129,6 @@ dmypy.json
 ._*
 Icon?
 .DS_STORE
+data/
 models/
 tests/
