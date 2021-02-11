@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from PIL import Image
+from sigver.featurelearning.models import SigNet
 from torchvision.transforms import *
 
 from .train_test import Classifier
@@ -16,7 +17,9 @@ class VerSign:
             model : a trained PyTorch model for extracting signature features
             imsize (tuple) : dimensions (w,h) of the input images to the model
         """
-        self.__model = model
+        state_dict, _, _ = torch.load(model)
+        self.__model = SigNet().eval()
+        self.__model.load_state_dict(state_dict)
         self.__imsize = imsize
         self.__clf = Classifier()
 
@@ -44,7 +47,7 @@ class VerSign:
             a OneClassSVM trained on input data
         """
         with torch.no_grad():
-            x = self.__model(torch.stack([self.transform(i) for i in X])).numpy()
+            x = self.__model(torch.stack([self.transform(Image.open(i).convert('L')) for i in X])).numpy()
             self.__clf.fit(x)
 
     def predict(self, X, thresh=0.5):
@@ -57,7 +60,7 @@ class VerSign:
             y (list) : list of predicted labels
         """
         with torch.no_grad():
-            x = self.__model(torch.stack([self.transform(i) for i in X])).numpy()
+            x = self.__model(torch.stack([self.transform(Image.open(i).convert('L')) for i in X])).numpy()
             if isinstance(thresh, list):
                 y_pred = {}
                 for t in thresh:
