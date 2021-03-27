@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="versign",
-    version="0.0.1",
+    version="0.0.2",
     author="Saif Khan",
     author_email="saifkhichi96@gmail.com",
     description="Signature verification package for verifying offline signatures using writer-independent features.",

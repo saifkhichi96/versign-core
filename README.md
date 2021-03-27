@@ -11,6 +11,12 @@ This package requires python 3. Installation can be done with pip:
 pip install versign
 ```
 
+You might also need to manually install the following dependencies:
+```
+pip install git+git://github.com/luizgh/visdom_logger#egg=visdom_logger
+pip install git+https://github.com/luizgh/sigver.git
+```
+
 Installation inside a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/) is recommended.
 
 ### Download Trained Models
