@@ -1,71 +1,56 @@
-import shutil
 from os import listdir, makedirs
 from os.path import isdir, join, splitext, exists
 
 import joblib
 import numpy as np
-import torch
-from sigver.featurelearning.models import SigNet
+import tqdm
 
 from versign import VerSign
-from versign.metrics import accuracy_score
+from versign.metrics import accuracy_scores, calc_equal_error
 
 # Define dataset locations
-root = '../clients/db/datasets/Signatures/CustomDataset/'
+root = '../../authentica/sources/db/datasets/Signatures/CustomDataset/'
 train = join(root, 'Ref/')
 test = join(root, 'Questioned/')
-out = join(root, 'Temp/')
-if not exists(out):
-    makedirs(out)
 
-# Load feature extraction model
-print("Loading pre-trained model for feature extraction...")
-state_dict, classification_layer, forg_layer = torch.load('models/signet.pth')
-net = SigNet().eval()
-net.load_state_dict(state_dict)
+sensitivity = np.arange(0,1,0.01)
+FARs = []
+FRRs = []
 
-# Load signature segmentation model
-print('loading segmentation model...')
-clf = joblib.load("models/versign_segment.pkl")
+valid_uids = []
+for uid in listdir(train):
+    train_data = join(train, uid)
+    test_data = join(test, uid)
+    if isdir(train_data) and isdir(test_data):
+        valid_uids.append(uid)
 
-v = VerSign(input_size=(150, 220), extraction_model=net, segmentation_model=clf)
+for uid in tqdm.tqdm(valid_uids):
+    train_data = join(train, uid)
+    test_data = join(test, uid)
 
-# Extract features from training data
-print("Extracting features from training images...")
-v.train_all(train, out)
+    # Load training data
+    n_train = 8
+    x_train = [join(train_data, f) for f in sorted(listdir(train_data))]
 
-# Evaluate test data
-print("Extracting features from and classifying test images...")
-results = v.test_all(test, out)
+    # Load test data and labels
+    x_test = [join(test_data, f) for f in sorted(listdir(test_data))]
+    y_true = [(1 if 'f' not in f.split('.')[0].lower() else -1) for f in sorted(listdir(test_data))]
 
-# Delete extracted features from disc
-shutil.rmtree(out)
+    # Train a writer-dependent model from training data
+    v = VerSign('models/signet.pth', (150, 220))
+    v.fit(x_train)
 
-# Load ground truth
-print("Reading groundtruth so that test accuracy can be measured...")
-ground_truth = []
-users = [i for i in sorted(listdir(test)) if isdir(join(test, i))]
-for user in users:
-    images = [i for i in sorted(listdir(join(test, user))) if
-              splitext(i)[1].lower() in ['.png', '.jpg', '.jpeg', '.tif', '.tiff'] and not i.startswith('.')]
+    # Predict labels of test data
+    y_preds = v.predict(x_test, list(sensitivity))
 
-    y = []
-    for im in images:
-        if 'f' not in im.lower():
-            y.append(1)
-        else:
-            y.append(-1)
+    # Compare predictions with groundtruth
+    far, frr = accuracy_scores(y_preds, y_true)
+    FARs.append(far)
+    FRRs.append(frr)
 
-    # y = np.loadtxt(join(join(test, user), 'groundtruth.txt'), int).tolist()
-    ground_truth.append(y)
+FARs = np.mean(np.array(FARs), axis=0)
+FRRs = np.mean(np.array(FRRs), axis=0)
 
-print("Calculating accuracy score...")
-summary, details = accuracy_score(results, np.array(ground_truth))
-
-print('STATS SUMMARY:', summary)
-print('DETAILED STATS:')
-for i in details.keys():
-    print("\t%s: %.02f%% accuracy (FAR: %.2f, FRR: %.2f)" %
-          (i, details[i]['accuracy'],
-           details[i]['false-pos'] / (details[i]['right'] + details[i]['wrong']) * 100,
-           details[i]['false-neg'] / (details[i]['right'] + details[i]['wrong']) * 100))
+eer, plt = calc_equal_error(FARs, FRRs, sensitivity)
+print(f'ERR: {eer:.2f}%')
+plt.show()

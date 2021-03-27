@@ -7,8 +7,7 @@ from skimage.filters import threshold_local
 
 def resize(image, canvas_size):
     # type: (np.array, tuple) -> np.array
-    """
-    Resize an image to specified size while preserving the aspect ratio.
+    """Resize an image to specified size while preserving the aspect ratio.
 
     The longer side of the image is made equal to the output length of that
     side, and the other side is scaled in accordance with the aspect ratio.
@@ -36,16 +35,19 @@ def resize(image, canvas_size):
 
 def center_inside(im, canvas_size):
     # type: (np.array, tuple) -> np.array
-    """
-    Centers an image inside a canvas.
+    """Centers an image inside a canvas.
 
-    Image is resized to fit on a white canvas while preserving the aspect ratio.
+    Image is resized to fit on a black canvas while preserving the aspect ratio.
 
-    :param im: the image to be resized
-    :param canvas_size: size of the canvas on which image is to be centered
+    Parameters:
+        im (np.array) : the image to be resized
+        canvas_size (tuple): the size (w,h) of the canvas
+
+    Returns:
+        input image centred on a black canvas of given size
     """
     out_w, out_h = canvas_size
-    canvas = np.ones(shape=(out_h, out_w)).astype('uint8') * 255
+    canvas = np.zeros(shape=(out_h, out_w)).astype('uint8') * 255
 
     im = resize(im, canvas_size)
     ih, iw = im.shape
@@ -58,42 +60,38 @@ def center_inside(im, canvas_size):
 
 
 def threshold_and_crop(im):
-    # type: (np.array) -> np.array
-    # Apply a gaussian filter on the image to remove small components
-    # Note: this is only used to define the limits to crop the image
-    blur_radius = 2
-    blurred_image = ndimage.gaussian_filter(im, blur_radius)
+    """Removes signature background and padding.
 
-    # Binarize the image using OTSU's algorithm. This is used to find the center
-    # of mass of the image, and find the threshold to remove background noise
-    threshold, binarized_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    The image is thresholded using the OTSU's algorithm, and the background
+    pixels are set to white (intensity 255), leaving the foreground pixels
+    in grayscale. The image is then inverted such that the background is
+    zero-valued.
 
-    # Crop the image with a tight box
-    r, c = np.where(binarized_image == 0)
-    cropped = im[r.min(): r.max(), c.min(): c.max()]
+    Parameters:
+        im (np.array) : the signature image array to be thresholded
 
-    # Remove noise - anything higher than the threshold. Note that the image is still grayscale
-    cropped[cropped > threshold] = 255
+    Returns:
+        thresholded and cropped signature image
+    """
+    # Threshold using OTSU's method
+    retval, thresh = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+
+    # Crop the original image with a tight box around signature
+    r, c = np.where(thresh != 0)
+    cropped = thresh[r.min(): r.max(), c.min(): c.max()]
     return cropped
 
 
 def preprocess_signature(im, canvas_size):
-    im = np.array(im)
-    im = threshold_and_crop(np.array(im))
+    """Preprocesses a signature image.
+
+    Parameters:
+        im (np.array) : the image to be preprocessed
+        canvas_size (tuple) : the size (w,h) of the resize canvas
+
+    Returns:
+        the preprocessed image as an numpy array
+    """
+    im = threshold_and_crop(im)
     im = center_inside(im, canvas_size)
-    return Image.fromarray(im)
-
-
-def preprocess_cheque(infile, outfile):
-    # Open image in grayscale mode
-    image = np.array(Image.open(infile).convert("L"))
-
-    # Apply local OTSU thresholding
-    block_size = 25
-    adaptive_thresh = threshold_local(image, block_size, offset=15)
-    binarized = image > adaptive_thresh
-    binarized = binarized.astype(float) * 255
-    binarized = Image.fromarray(binarized).convert("L")
-
-    # Save binarized file
-    binarized.save(outfile)
+    return im

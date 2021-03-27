@@ -1,9 +1,11 @@
 joblib
-numpy >= 1.10.4
+numpy
 opencv-contrib-python
 Pillow
 scikit-image
-scikit-learn >= 0.19.0
+scikit-learn
 scipy
-torch >= 1.0
-torchvision >= 0.2.1
+torch
+torchvision
+git+git://github.com/luizgh/visdom_logger#egg=visdom_logger
+git+https://github.com/luizgh/sigver.git
