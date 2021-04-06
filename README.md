@@ -32,7 +32,7 @@ _ $PROJECT_ROOT
 ```
 
 ### Organise Your Dataset
-It is assumed that only positive samples (i.e. genuine signatures) are available during training, while both genuine and forged signatures are present during testing.
+This model treats signature verification as a single-class learning problem where only positive samples (i.e. genuine signatures) are available during training. This is because, in real-world situations where we want to enrol users into a signature verification system for verifying their signatures later, we don't have any forgeries available unless we specifically obtain them. Which is not practical. However, both genuine and forged signatures can be present during testing.
 
 ### Write Your First Program with ```VerSign```
 ```
